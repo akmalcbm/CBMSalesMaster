@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+option java_package = "shop.chamanbahar.cbmsales.datastore";
+option java_multiple_files = true;
+
+message HtmlCacheEntry {
+    map<string, string> entries = 1;
+}
