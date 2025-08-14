@@ -79,27 +79,23 @@ fun OrderDetailsScreen(
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val timeFormatter = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
 
-    val uiStateFlow = remember(orderId) { orderViewModel.getOrderDetailsUiState(orderId) }
-    val uiState by uiStateFlow.collectAsStateWithLifecycle()
+    // New: collect the OrderWithItems directly (null == loading/empty)
+    val orderWithItems by remember(orderId) {
+        orderViewModel.getOrderDetails(orderId)
+    }.collectAsStateWithLifecycle(initialValue = null)
 
     var isEditingNotes by rememberSaveable { mutableStateOf(false) }
     var editedNotes by rememberSaveable { mutableStateOf("") }
     var itemToRemove by remember { mutableStateOf<OrderItem?>(null) }
     var showDeleteOrderDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState.orderWithItems?.order?.notes) {
-        editedNotes = uiState.orderWithItems?.order?.notes.orEmpty()
+    LaunchedEffect(orderWithItems?.order?.notes) {
+        editedNotes = orderWithItems?.order?.notes.orEmpty()
     }
 
-    fun updateOrderStatus(isCompleted: Boolean) {
-        scope.launch {
-            orderViewModel.updateOrderStatus(orderId, isCompleted)
-            snackbarHostState.showSnackbar(
-                if (isCompleted) "Order marked as completed"
-                else "Order reverted to pending"
-            )
-        }
-    }
+    val order = orderWithItems?.order
+    val items = orderWithItems?.items.orEmpty()
+    val retailer = orderWithItems?.retailer
 
     Scaffold(
         topBar = {
@@ -111,12 +107,23 @@ fun OrderDetailsScreen(
                     }
                 },
                 actions = {
-                    uiState.orderWithItems?.order?.let { order ->
-                        IconButton(onClick = { updateOrderStatus(!order.isCompleted) }) {
+                    order?.let {
+                        val disabled = it.isCancelled
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    orderViewModel.setOrderCompleted(orderId, !it.isCompleted)
+                                    snackbarHostState.showSnackbar(
+                                        if (!it.isCompleted) "Order marked as completed"
+                                        else "Order reverted to pending"
+                                    )
+                                }
+                            },
+                            enabled = !disabled
+                        ) {
                             Icon(
-                                imageVector = if (order.isCompleted) Icons.Default.Check
-                                else Icons.Default.HourglassEmpty,
-                                contentDescription = "Toggle Status"
+                                imageVector = if (it.isCompleted) Icons.Default.Check else Icons.Default.HourglassEmpty,
+                                contentDescription = "Toggle Completed"
                             )
                         }
                     }
@@ -127,26 +134,22 @@ fun OrderDetailsScreen(
     ) { padding ->
 
         when {
-            uiState.isLoading -> {
+            orderWithItems == null -> {
+                // Loading / not found yet
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
                     contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                ) { CircularProgressIndicator() }
             }
 
-            uiState.orderWithItems != null -> {
-                val orderWithItems = uiState.orderWithItems!!
-                val order = orderWithItems.order
-                val items = orderWithItems.items
-                val retailer = orderWithItems.retailer
-
+            order != null && retailer != null -> {
+                // Derived totals
                 val mrpSubtotal = remember(items) {
                     items.sumOf {
-                        val mrpRate = if (it.discount >= 100) 0.0 else it.rate / (1 - (it.discount / 100))
+                        val mrpRate =
+                            if (it.discount >= 100) 0.0 else it.rate / (1 - (it.discount / 100))
                         mrpRate * it.quantity
                     }
                 }
@@ -164,7 +167,14 @@ fun OrderDetailsScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    item { OrderHeaderCard(order, retailer, dateFormatter, timeFormatter) }
+                    item {
+                        OrderHeaderCard(
+                            order = order,
+                            retailer = retailer,
+                            dateFormatter = dateFormatter,
+                            timeFormatter = timeFormatter
+                        )
+                    }
 
                     item {
                         NotesSection(
@@ -178,36 +188,39 @@ fun OrderDetailsScreen(
                                     isEditingNotes = false
                                 }
                             },
-                            isEditable = !order.isCompleted
+                            isEditable = !order.isCompleted && !order.isCancelled
                         )
                     }
 
                     item {
-                        Text("Order Items (${items.size})", style = MaterialTheme.typography.titleMedium)
-                    }
-
-                    items(items) { product ->
-                        OrderProductCard(
-                            item = product,
-                            onQuantityChange = { newQty ->
-                                scope.launch { orderViewModel.updateOrderItem(product.copy(quantity = newQty)) }
-                            },
-                            onRemove = { selectedItem -> itemToRemove = selectedItem },
-                            isEditable = !order.isCompleted
+                        Text(
+                            "Order Items (${items.size})",
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
 
-                    if (!order.isCompleted) {
-                        item {
-                            Button(
-                                onClick = { navController.navigate("order_screen?editOrderId=${order.id}") },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.Add, contentDescription = "Add Products")
-                                Spacer(Modifier.width(8.dp))
-                                Text("Add More Products")
-                            }
-                        }
+                    items(
+                        items = items,
+                        key = { it.id }
+                    ) { product ->
+                        OrderProductCard(
+                            item = product,
+                            onQuantityChange = { newQty ->
+                                if (!order.isCompleted && !order.isCancelled) {
+                                    scope.launch {
+                                        orderViewModel.updateOrderItem(
+                                            product.copy(quantity = newQty)
+                                        )
+                                    }
+                                }
+                            },
+                            onRemove = { selectedItem ->
+                                if (!order.isCompleted && !order.isCancelled) {
+                                    itemToRemove = selectedItem
+                                }
+                            },
+                            isEditable = !order.isCompleted && !order.isCancelled
+                        )
                     }
 
                     item {
@@ -218,13 +231,14 @@ fun OrderDetailsScreen(
                         )
                     }
 
-                    if (!order.isCompleted && order.status != "Cancelled") {
+                    // Cancel button (if not cancelled and not completed)
+                    if (!order.isCompleted && !order.isCancelled) {
                         item {
                             DangerButton(
                                 text = "Cancel Order",
                                 onClick = {
                                     scope.launch {
-                                        orderViewModel.updateOrderStatus(orderId, status = "Cancelled")
+                                        orderViewModel.cancelOrder(orderId)
                                         navController.popBackStack()
                                     }
                                 },
@@ -233,7 +247,23 @@ fun OrderDetailsScreen(
                         }
                     }
 
-                    // Delete order button
+                    // Add more products (if not completed/cancelled)
+                    if (!order.isCompleted && !order.isCancelled) {
+                        item {
+                            Button(
+                                onClick = {
+                                    navController.navigate("order_screen?editOrderId=${order.id}")
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Add Products")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Add More Products")
+                            }
+                        }
+                    }
+
+                    // Delete order (always visible)
                     item {
                         DangerButton(
                             text = "Delete Order",
@@ -244,15 +274,15 @@ fun OrderDetailsScreen(
                 }
 
                 // Remove item dialog
-                if (itemToRemove != null) {
+                itemToRemove?.let { item ->
                     AlertDialog(
                         onDismissRequest = { itemToRemove = null },
                         title = { Text("Remove Product") },
-                        text = { Text("Are you sure you want to remove '${itemToRemove!!.productName}' from the order?") },
+                        text = { Text("Remove '${item.productName}' from the order?") },
                         confirmButton = {
                             TextButton(onClick = {
                                 scope.launch {
-                                    orderViewModel.removeOrderItem(itemToRemove!!.id)
+                                    orderViewModel.removeOrderItem(item.id)
                                     itemToRemove = null
                                 }
                             }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
@@ -263,12 +293,12 @@ fun OrderDetailsScreen(
                     )
                 }
 
-                // Delete order confirmation dialog
+                // Delete order dialog
                 if (showDeleteOrderDialog) {
                     AlertDialog(
                         onDismissRequest = { showDeleteOrderDialog = false },
                         title = { Text("Delete Order") },
-                        text = { Text("Are you sure you want to permanently delete this order?") },
+                        text = { Text("This will permanently delete the order.") },
                         confirmButton = {
                             TextButton(onClick = {
                                 scope.launch {
@@ -285,6 +315,7 @@ fun OrderDetailsScreen(
             }
 
             else -> {
+                // Not found
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -295,6 +326,7 @@ fun OrderDetailsScreen(
         }
     }
 }
+
 
 
 
@@ -320,10 +352,11 @@ fun OrderHeaderCard(
                     "Order #${order.id}",
                     style = MaterialTheme.typography.titleLarge
                 )
-                StatusChip(
-                    isCompleted = order.isCompleted,
-                    isCancelled = order.isCancelled
-                )
+                StatusChip(status = when {
+                    order.isCancelled -> "Cancelled"
+                    order.isCompleted -> "Completed"
+                    else -> "Pending"
+                })
             }
 
             Spacer(modifier = Modifier.height(8.dp))

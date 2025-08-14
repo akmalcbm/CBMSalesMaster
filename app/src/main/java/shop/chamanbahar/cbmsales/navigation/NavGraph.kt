@@ -9,6 +9,9 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import shop.chamanbahar.cbmsales.data.DatabaseProvider
+import shop.chamanbahar.cbmsales.data.dao.OrderItemDao
+import shop.chamanbahar.cbmsales.data.dao.RetailerDao
+import shop.chamanbahar.cbmsales.data.repository.RetailerRepository
 import shop.chamanbahar.cbmsales.repository.OrderRepository
 import shop.chamanbahar.cbmsales.screens.*
 import shop.chamanbahar.cbmsales.viewmodel.*
@@ -28,11 +31,8 @@ fun AppNavGraph(
     // 🧾 OrderViewModel via factory
     val orderViewModel: OrderViewModel = viewModel(
         factory = OrderViewModelFactory(
-            OrderRepository(
-                db.orderDao(),
-                db.retailerDao(),
-                db.orderItemDao()
-            )
+            OrderRepository(db.orderDao(), db.orderItemDao()),
+            RetailerRepository(db.retailerDao())
         )
     )
 

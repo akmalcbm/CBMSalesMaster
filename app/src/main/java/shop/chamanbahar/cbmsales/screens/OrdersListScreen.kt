@@ -187,10 +187,11 @@ fun OrderListItem(
                     Text("🧾 Order #${order.id}", style = MaterialTheme.typography.titleMedium)
                     Text("🏬 ${retailer.name}", style = MaterialTheme.typography.bodyMedium)
                 }
-                StatusChip(
-                    isCompleted = order.isCompleted,
-                    isCancelled = order.isCancelled
-                )
+                StatusChip(status = when {
+                    order.isCancelled -> "Cancelled"
+                    order.isCompleted -> "Completed"
+                    else -> "Pending"
+                })
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -213,24 +214,13 @@ fun OrderListItem(
 }
 
 @Composable
-fun StatusChip(
-    isCompleted: Boolean,
-    isCancelled: Boolean
-) {
-    val (color, label) = when {
-        isCancelled -> MaterialTheme.colorScheme.errorContainer to "Cancelled"
-        isCompleted -> MaterialTheme.colorScheme.primaryContainer to "Completed"
-        else -> MaterialTheme.colorScheme.secondaryContainer to "Pending"
+fun StatusChip(status: String) {
+    val (bg, label) = when (status) {
+        "Cancelled" -> MaterialTheme.colorScheme.errorContainer to "Cancelled"
+        "Completed" -> MaterialTheme.colorScheme.primaryContainer to "Completed"
+        else        -> MaterialTheme.colorScheme.secondaryContainer to "Pending"
     }
-
-    Surface(
-        color = color,
-        shape = MaterialTheme.shapes.small
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelSmall
-        )
+    Surface(color = bg, shape = MaterialTheme.shapes.small) {
+        Text(label, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
     }
 }
