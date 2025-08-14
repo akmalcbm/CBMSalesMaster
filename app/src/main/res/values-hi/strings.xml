@@ -4,7 +4,7 @@
     <string name="theme">थीम</string>
     <string name="light">हल्का</string>
     <string name="dark">डार्क</string>
-    <string name="settings">सेटिंग्स</string>
+    <string name="settings">⚙️ सेटिंग्स</string>
     <string name="price_per_piece">कीमत / पीस</string>
     <string name="price_per_bundle">कीमत / बंडल</string>
     <string name="price_per_bori">कीमत / बोरी</string>
@@ -15,11 +15,12 @@
     <string name="search_hint">उत्पाद खोजें</string>
     <string name="pending_orders">Pending</string>
     <string name="completed_orders">Completed</string>
+    <string name="cancelled_orders">Cancelled</string>
     <string name="search_orders">Search orders...</string>
     <string name="no_pending_orders">No pending orders</string>
     <string name="no_completed_orders">No completed orders</string>
+    <string name="no_cancelled_orders">No cancelled orders</string>
+    <string name="no_orders">No Orders</string>
     <string name="no_matching_orders">No orders match your search</string>
-    <string name="pending">Pending</string>
-    <string name="completed">Completed</string>
 
 </resources>

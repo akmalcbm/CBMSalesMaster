@@ -119,4 +119,30 @@ class OrderViewModel(private val repository: OrderRepository) : ViewModel() {
                     OrderDetailsUiState(isLoading = true)
                 )
         }
+
+    fun removeOrderItem(orderItemId: Int) {
+        viewModelScope.launch {
+            repository.deleteOrderItem(orderItemId)
+        }
+    }
+
+    fun updateOrderStatus(orderId: Int, status: String) {
+        viewModelScope.launch {
+            repository.updateOrderStatus(orderId, status) // ✅ match property name
+        }
+    }
+
+    val cancelledOrders: StateFlow<List<OrderWithItems>> =
+        repository.getCancelledOrdersFlow()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun cancelOrder(orderId: Int) {
+        viewModelScope.launch {
+            repository.updateOrderStatus(orderId, "Cancelled")
+        }
+    }
+
+
+
+
 }

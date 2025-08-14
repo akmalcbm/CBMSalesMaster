@@ -11,5 +11,7 @@ data class Order(
     val discount: Double,
     val totalAmount: Double,
     val notes: String? = "",
-    val isCompleted: Boolean = false // ✅ NEW field for pending/completed
+    val status: String = "Pending",
+    val isCompleted: Boolean = false, // ✅ NEW field for pending/completed
+    val isCancelled: Boolean = false
 )

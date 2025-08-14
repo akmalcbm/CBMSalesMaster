@@ -86,7 +86,7 @@ fun HomeScreen(
 
                 // 🆕 ✅ Add Retailer Option
                 Text(
-                    text = "➕ Add Retailer",
+                    text = "\uD83E\uDDD1\uD83C\uDFFB\u200D\uD83D\uDCBC Retailers",
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {

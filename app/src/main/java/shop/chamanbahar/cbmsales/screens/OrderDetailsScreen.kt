@@ -20,16 +20,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +41,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -75,18 +79,14 @@ fun OrderDetailsScreen(
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val timeFormatter = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
 
-    // Remember the StateFlow instance for this orderId (critical to avoid flicker)
     val uiStateFlow = remember(orderId) { orderViewModel.getOrderDetailsUiState(orderId) }
-
-    // Prefer lifecycle-aware collection to avoid extra emissions on lifecycle changes
-    // Add dependency: implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     val uiState by uiStateFlow.collectAsStateWithLifecycle()
 
-    // Notes editing state
     var isEditingNotes by rememberSaveable { mutableStateOf(false) }
     var editedNotes by rememberSaveable { mutableStateOf("") }
+    var itemToRemove by remember { mutableStateOf<OrderItem?>(null) }
+    var showDeleteOrderDialog by remember { mutableStateOf(false) }
 
-    // Only update editedNotes when the DB value actually changes
     LaunchedEffect(uiState.orderWithItems?.order?.notes) {
         editedNotes = uiState.orderWithItems?.order?.notes.orEmpty()
     }
@@ -133,7 +133,9 @@ fun OrderDetailsScreen(
                         .fillMaxSize()
                         .padding(padding),
                     contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
+                ) {
+                    CircularProgressIndicator()
+                }
             }
 
             uiState.orderWithItems != null -> {
@@ -142,18 +144,18 @@ fun OrderDetailsScreen(
                 val items = orderWithItems.items
                 val retailer = orderWithItems.retailer
 
-                // Derive subtotal once when items change (micro-optimization)
-                val subtotal by remember(items) {
-                    mutableStateOf(items.sumOf { it.subtotal })
+                val mrpSubtotal = remember(items) {
+                    items.sumOf {
+                        val mrpRate = if (it.discount >= 100) 0.0 else it.rate / (1 - (it.discount / 100))
+                        mrpRate * it.quantity
+                    }
                 }
-
-
-                val totalDiscountAmount by remember(items) {
-                    mutableStateOf(
-                        items.sumOf { ((it.rate / (1 - (it.discount / 100))) * it.quantity) - it.subtotal }
-                    )
+                val totalDiscountAmount = remember(items) {
+                    items.sumOf {
+                        val mrpRate = it.rate / (1 - (it.discount / 100))
+                        (mrpRate * it.quantity) - it.subtotal
+                    }
                 }
-
 
                 LazyColumn(
                     modifier = Modifier
@@ -162,9 +164,7 @@ fun OrderDetailsScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    item {
-                        OrderHeaderCard(order, retailer, dateFormatter, timeFormatter)
-                    }
+                    item { OrderHeaderCard(order, retailer, dateFormatter, timeFormatter) }
 
                     item {
                         NotesSection(
@@ -183,60 +183,48 @@ fun OrderDetailsScreen(
                     }
 
                     item {
-                        Text(
-                            "Order Items (${items.size})",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Text("Order Items (${items.size})", style = MaterialTheme.typography.titleMedium)
                     }
 
-                    items(
-                        items = items,
-                        key = { it.id } // keep stable keys to preserve item state
-                    ) { item ->
+                    items(items) { product ->
                         OrderProductCard(
-                            item = item,
+                            item = product,
                             onQuantityChange = { newQty ->
-                                if (!order.isCompleted) {
-                                    scope.launch {
-                                        orderViewModel.updateOrderItem(item.copy(quantity = newQty))
-                                    }
-                                }
+                                scope.launch { orderViewModel.updateOrderItem(product.copy(quantity = newQty)) }
                             },
+                            onRemove = { selectedItem -> itemToRemove = selectedItem },
                             isEditable = !order.isCompleted
-                        )
-                    }
-
-                    item {
-
-                        OrderSummaryCard(
-                            subtotal = subtotal,
-                            discountAmount = totalDiscountAmount,
-                            total = order.totalAmount
                         )
                     }
 
                     if (!order.isCompleted) {
                         item {
                             Button(
-                                onClick = {
-                                    navController.navigate("order_screen?editOrderId=${order.id}")
-                                },
+                                onClick = { navController.navigate("order_screen?editOrderId=${order.id}") },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Add Products")
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(Modifier.width(8.dp))
                                 Text("Add More Products")
                             }
                         }
                     }
 
-                    if (!order.isCompleted) {
+                    item {
+                        OrderSummaryCard(
+                            subtotal = mrpSubtotal,
+                            discountAmount = totalDiscountAmount,
+                            total = mrpSubtotal - totalDiscountAmount
+                        )
+                    }
+
+                    if (!order.isCompleted && order.status != "Cancelled") {
                         item {
                             DangerButton(
                                 text = "Cancel Order",
                                 onClick = {
                                     scope.launch {
-                                        orderViewModel.deleteOrder(order)
+                                        orderViewModel.updateOrderStatus(orderId, status = "Cancelled")
                                         navController.popBackStack()
                                     }
                                 },
@@ -244,6 +232,55 @@ fun OrderDetailsScreen(
                             )
                         }
                     }
+
+                    // Delete order button
+                    item {
+                        DangerButton(
+                            text = "Delete Order",
+                            onClick = { showDeleteOrderDialog = true },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                // Remove item dialog
+                if (itemToRemove != null) {
+                    AlertDialog(
+                        onDismissRequest = { itemToRemove = null },
+                        title = { Text("Remove Product") },
+                        text = { Text("Are you sure you want to remove '${itemToRemove!!.productName}' from the order?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                scope.launch {
+                                    orderViewModel.removeOrderItem(itemToRemove!!.id)
+                                    itemToRemove = null
+                                }
+                            }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { itemToRemove = null }) { Text("Cancel") }
+                        }
+                    )
+                }
+
+                // Delete order confirmation dialog
+                if (showDeleteOrderDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showDeleteOrderDialog = false },
+                        title = { Text("Delete Order") },
+                        text = { Text("Are you sure you want to permanently delete this order?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                scope.launch {
+                                    orderViewModel.deleteOrder(order)
+                                    navController.popBackStack()
+                                }
+                            }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDeleteOrderDialog = false }) { Text("Cancel") }
+                        }
+                    )
                 }
             }
 
@@ -253,13 +290,13 @@ fun OrderDetailsScreen(
                         .fillMaxSize()
                         .padding(padding),
                     contentAlignment = Alignment.Center
-                ) {
-                    Text("Order not found", style = MaterialTheme.typography.bodyLarge)
-                }
+                ) { Text("Order not found", style = MaterialTheme.typography.bodyLarge) }
             }
         }
     }
 }
+
+
 
 @Composable
 fun OrderHeaderCard(
@@ -283,7 +320,10 @@ fun OrderHeaderCard(
                     "Order #${order.id}",
                     style = MaterialTheme.typography.titleLarge
                 )
-                StatusChip(isCompleted = order.isCompleted)
+                StatusChip(
+                    isCompleted = order.isCompleted,
+                    isCancelled = order.isCancelled
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -327,6 +367,7 @@ fun OrderHeaderCard(
 fun OrderProductCard(
     item: OrderItem,
     onQuantityChange: (Int) -> Unit,
+    onRemove: (OrderItem) -> Unit,
     isEditable: Boolean
 ) {
     Card(
@@ -337,9 +378,8 @@ fun OrderProductCard(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // ✅ Show actual product image from drawable
             Image(
-                painter = painterResource(id = item.imageResId), // Needs to be in OrderItem
+                painter = painterResource(id = item.imageResId),
                 contentDescription = item.productName,
                 modifier = Modifier
                     .size(64.dp)
@@ -353,17 +393,26 @@ fun OrderProductCard(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    item.productName,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    "Product ID: ${item.productId}",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text(item.productName, style = MaterialTheme.typography.titleMedium)
 
+                    if (isEditable) {
+                        IconButton(onClick = { onRemove(item) }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+
+                Text("Product ID: ${item.productId}", style = MaterialTheme.typography.bodySmall)
                 Spacer(modifier = Modifier.height(4.dp))
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -371,13 +420,12 @@ fun OrderProductCard(
                     Column {
                         Text("Quantity: ${item.quantity} ${item.unit}")
                         Text("Rate: ₹${"%.2f".format(item.rate)}")
-                        if (item.discount > 0) { // 👈 Show only if there is a discount
+                        if (item.discount > 0) {
                             Text("Discount: ${item.discount}%")
                         }
                     }
-
                     Text(
-                        "💵 ₹${"%.2f".format(item.subtotal)}",
+                        "₹${"%.2f".format(item.subtotal)}",
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -487,7 +535,7 @@ fun OrderSummaryCard(subtotal: Double, discountAmount: Double, total: Double) {
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Divider()
+            HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(

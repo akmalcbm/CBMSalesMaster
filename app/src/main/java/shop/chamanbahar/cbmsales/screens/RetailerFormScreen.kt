@@ -6,8 +6,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,21 +29,47 @@ fun RetailerFormScreen(
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val retailers by orderViewModel.retailers.collectAsState()
 
-    // 🔥 Form fields
+    // Dialog states
+    var showDialog by remember { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(false) }
+    var editingRetailerId by remember { mutableStateOf<Int?>(null) }
+
+    // Form fields (for dialog)
     var retailerName by remember { mutableStateOf("") }
     var retailerPhone by remember { mutableStateOf("") }
     var retailerAddress by remember { mutableStateOf("") }
 
-    // ✅ For edit mode
-    var isEditing by remember { mutableStateOf(false) }
-    var editingRetailerId by remember { mutableStateOf<Int?>(null) }
-
-    // ✅ Confirmation dialog state
+    // Delete confirmation dialog
     var retailerToDelete by remember { mutableStateOf<Retailer?>(null) }
 
-    // ✅ Live retailer list from DB
-    val retailers by orderViewModel.retailers.collectAsState()
+    // Search state
+    var searchQuery by remember { mutableStateOf("") }
+
+    fun openAddDialog() {
+        retailerName = ""
+        retailerPhone = ""
+        retailerAddress = ""
+        editingRetailerId = null
+        isEditing = false
+        showDialog = true
+    }
+
+    fun openEditDialog(retailer: Retailer) {
+        retailerName = retailer.name
+        retailerPhone = retailer.phone
+        retailerAddress = retailer.address
+        editingRetailerId = retailer.id
+        isEditing = true
+        showDialog = true
+    }
+
+    val filteredRetailers = retailers.filter {
+        it.name.contains(searchQuery, ignoreCase = true) ||
+                it.phone.contains(searchQuery) ||
+                it.address.contains(searchQuery, ignoreCase = true)
+    }
 
     Scaffold(
         topBar = {
@@ -51,125 +79,119 @@ fun RetailerFormScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    IconButton(onClick = { openAddDialog() }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Retailer")
+                    }
                 }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Top
+                .padding(16.dp)
         ) {
-            // --- FORM (Same as before) ---
+            // Search Field
             OutlinedTextField(
-                value = retailerName,
-                onValueChange = { retailerName = it },
-                label = { Text("Retailer Name") },
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Search Retailers") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "Search")
+                }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = retailerPhone,
-                onValueChange = { retailerPhone = it },
-                label = { Text("Phone Number") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = retailerAddress,
-                onValueChange = { retailerAddress = it },
-                label = { Text("Address") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    if (retailerName.isNotBlank() && retailerPhone.isNotBlank() && retailerAddress.isNotBlank()) {
-                        scope.launch {
-                            if (isEditing && editingRetailerId != null) {
-                                // UPDATE
-                                orderViewModel.updateRetailer(
-                                    Retailer(
-                                        id = editingRetailerId!!,
-                                        name = retailerName,
-                                        phone = retailerPhone,
-                                        address = retailerAddress
-                                    )
-                                )
-                                snackbarHostState.showSnackbar("✅ Retailer updated!")
-                                isEditing = false
-                                editingRetailerId = null
-                            } else {
-                                // ADD
-                                orderViewModel.addRetailer(retailerName, retailerPhone, retailerAddress)
-                                snackbarHostState.showSnackbar("✅ Retailer added!")
-                            }
-                            retailerName = ""
-                            retailerPhone = ""
-                            retailerAddress = ""
-                        }
-                    } else {
-                        scope.launch {
-                            snackbarHostState.showSnackbar("⚠️ Please fill all fields")
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-            ) {
-                Text(if (isEditing) "Update Retailer" else "Save Retailer")
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text("Saved Retailers", style = MaterialTheme.typography.titleMedium)
 
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(top = 8.dp)
+                modifier = Modifier.weight(1f)
             ) {
-                items(retailers) { retailer ->
+                items(filteredRetailers) { retailer ->
                     RetailerListItem(
                         retailer = retailer,
-                        onEdit = {
-                            retailerName = it.name
-                            retailerPhone = it.phone
-                            retailerAddress = it.address
-                            editingRetailerId = it.id
-                            isEditing = true
-                        },
-                        onDelete = {
-                            retailerToDelete = it   // ✅ SHOW DIALOG INSTEAD OF INSTANT DELETE
-                        }
+                        onEdit = { openEditDialog(it) },
+                        onDelete = { retailerToDelete = it }
                     )
                 }
             }
         }
 
-        // 🔴 CONFIRM DELETE DIALOG
+        // --- Add/Edit Dialog ---
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = { Text(if (isEditing) "Edit Retailer" else "Add Retailer") },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = retailerName,
+                            onValueChange = { retailerName = it },
+                            label = { Text("Retailer Name") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = retailerPhone,
+                            onValueChange = { retailerPhone = it },
+                            label = { Text("Phone Number") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = retailerAddress,
+                            onValueChange = { retailerAddress = it },
+                            label = { Text("Address") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp)
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (retailerName.isBlank() || retailerPhone.isBlank() || retailerAddress.isBlank()) {
+                            scope.launch { snackbarHostState.showSnackbar("⚠️ Please fill all fields") }
+                        } else {
+                            scope.launch {
+                                if (isEditing && editingRetailerId != null) {
+                                    orderViewModel.updateRetailer(
+                                        Retailer(editingRetailerId!!, retailerName, retailerPhone, retailerAddress)
+                                    )
+                                    snackbarHostState.showSnackbar("✅ Retailer updated!")
+                                } else {
+                                    orderViewModel.addRetailer(retailerName, retailerPhone, retailerAddress)
+                                    snackbarHostState.showSnackbar("✅ Retailer added!")
+                                }
+                                showDialog = false
+                            }
+                        }
+                    }) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // --- Delete Confirmation Dialog ---
         if (retailerToDelete != null) {
             AlertDialog(
                 onDismissRequest = { retailerToDelete = null },
                 title = { Text("Delete Retailer") },
-                text = { Text("Are you sure you want to delete '${retailerToDelete!!.name}'? This cannot be undone.") },
+                text = { Text("Are you sure you want to delete '${retailerToDelete!!.name}'?") },
                 confirmButton = {
                     TextButton(onClick = {
                         scope.launch {
@@ -191,7 +213,6 @@ fun RetailerFormScreen(
     }
 }
 
-
 @Composable
 fun RetailerListItem(
     retailer: Retailer,
@@ -202,7 +223,7 @@ fun RetailerListItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -216,7 +237,6 @@ fun RetailerListItem(
                 Text("📱 ${retailer.phone}", style = MaterialTheme.typography.bodyMedium)
                 Text("🏠 ${retailer.address}", style = MaterialTheme.typography.bodySmall)
             }
-
             Row {
                 IconButton(onClick = { onEdit(retailer) }) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit")
@@ -228,3 +248,5 @@ fun RetailerListItem(
         }
     }
 }
+
+

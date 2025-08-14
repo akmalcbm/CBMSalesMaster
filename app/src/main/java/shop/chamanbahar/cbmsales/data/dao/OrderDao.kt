@@ -70,6 +70,17 @@ interface OrderDao {
     @Query("UPDATE orders SET isCompleted = :isCompleted WHERE id = :orderId")
     suspend fun updateOrderStatus(orderId: Int, isCompleted: Boolean)
 
+    @Query("SELECT * FROM orders WHERE isCancelled = 1 ORDER BY date DESC")
+    fun getCancelledOrders(): Flow<List<OrderWithItems>>
+
+    @Query("UPDATE orders SET isCancelled = :cancelled WHERE id = :orderId")
+    suspend fun updateOrderCancelled(orderId: Int, cancelled: Boolean)
+
+
+    @Query("UPDATE orders SET status = :status WHERE id = :orderId")
+    suspend fun updateOrderStatus(orderId: Int, status: String)
+
+
     @Transaction
     @Query("SELECT * FROM orders ORDER BY date DESC")
     fun getOrdersWithRetailersFlow(): Flow<List<OrderWithRetailer>>
@@ -83,6 +94,9 @@ interface OrderDao {
     @Transaction
     @Query("SELECT * FROM orders WHERE id = :orderId")
     suspend fun getOrderWithItemsOnce(orderId: Int): OrderWithItems?
+
+    @Query("DELETE FROM order_items WHERE id = :orderItemId")
+    suspend fun deleteOrderItem(orderItemId: Int)
 
 
 

@@ -40,6 +40,18 @@ class OrderRepository(
         orderDao.updateOrderCompletion(orderId, completed)
     }
 
+    fun getCancelledOrdersFlow(): Flow<List<OrderWithItems>> =
+        orderDao.getCancelledOrders()
+
+    suspend fun updateOrderCancelled(orderId: Int, cancelled: Boolean) =
+        orderDao.updateOrderCancelled(orderId, cancelled)
+
+
+    suspend fun updateOrderStatus(orderId: Int, status: String) {
+        orderDao.updateOrderStatus(orderId, status)
+    }
+
+
 
     // --- ORDER ITEMS ---
     suspend fun addOrderItem(item: OrderItem) = orderItemDao.insertOrderItem(item)
@@ -62,6 +74,11 @@ class OrderRepository(
     suspend fun getOrderWithItemsOnce(orderId: Int): OrderWithItems? {
         return orderDao.getOrderWithItemsOnce(orderId)
     }
+
+    suspend fun deleteOrderItem(orderItemId: Int) {
+        orderDao.deleteOrderItem(orderItemId)
+    }
+
 
 
 }

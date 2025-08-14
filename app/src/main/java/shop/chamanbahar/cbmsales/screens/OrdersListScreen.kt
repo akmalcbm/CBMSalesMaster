@@ -1,12 +1,13 @@
+
 package shop.chamanbahar.cbmsales.screens
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -26,56 +27,52 @@ import shop.chamanbahar.cbmsales.viewmodel.OrderViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun OrdersListScreen(
     navController: NavHostController,
     orderViewModel: OrderViewModel
 ) {
-    val context = LocalContext.current
+    // ---------- State ----------
     val pendingOrders by orderViewModel.pendingOrders.collectAsState()
     val completedOrders by orderViewModel.completedOrders.collectAsState()
+    val cancelledOrders by orderViewModel.cancelledOrders.collectAsState()
+
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     var selectedTabIndex by remember { mutableStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
     val tabs = listOf(
         stringResource(R.string.pending_orders),
-        stringResource(R.string.completed_orders)
+        stringResource(R.string.completed_orders),
+        stringResource(R.string.cancelled_orders)
     )
 
-    val filteredPendingOrders = remember(pendingOrders, searchQuery) {
-        pendingOrders.filter { orderWithItems ->
-            orderWithItems.order.id.toString().contains(searchQuery, ignoreCase = true) ||
-                    orderWithItems.retailer.name.contains(searchQuery, ignoreCase = true)
-        }.sortedByDescending { it.order.date }
+    // ---------- Filtering in ONE place ----------
+    val filteredOrders = remember(searchQuery, pendingOrders, completedOrders, cancelledOrders) {
+        listOf(
+            pendingOrders.filter { matchesSearch(it, searchQuery) }.sortedByDescending { it.order.date },
+            completedOrders.filter { matchesSearch(it, searchQuery) }.sortedByDescending { it.order.date },
+            cancelledOrders.filter { matchesSearch(it, searchQuery) }.sortedByDescending { it.order.date }
+        )
     }
+    val currentOrders = filteredOrders[selectedTabIndex]
 
-    val filteredCompletedOrders = remember(completedOrders, searchQuery) {
-        completedOrders.filter { orderWithItems ->
-            orderWithItems.order.id.toString().contains(searchQuery, ignoreCase = true) ||
-                    orderWithItems.retailer.name.contains(searchQuery, ignoreCase = true)
-        }.sortedByDescending { it.order.date }
-    }
-
-    val currentOrders = when (selectedTabIndex) {
-        0 -> filteredPendingOrders
-        1 -> filteredCompletedOrders
-        else -> emptyList()
-    }
-
+    // ---------- Refresh function ----------
     fun refreshData() {
         scope.launch {
             refreshing = true
-            orderViewModel.refreshOrders()
+            orderViewModel.refreshOrders() // Make sure this loads cancelled too
             refreshing = false
         }
     }
 
+    // ---------- UI ----------
     Scaffold(
         topBar = {
             Column {
+                // Search Box
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -87,20 +84,19 @@ fun OrdersListScreen(
                     singleLine = true
                 )
 
-                TabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                // Tabs
+                TabRow(selectedTabIndex = selectedTabIndex) {
                     tabs.forEachIndexed { index, title ->
                         Tab(
                             selected = selectedTabIndex == index,
                             onClick = { selectedTabIndex = index },
                             text = { Text(title) },
                             icon = {
-                                Icon(
-                                    imageVector = if (index == 0) Icons.Default.HourglassEmpty else Icons.Default.Check,
-                                    contentDescription = title
-                                )
+                                when (index) {
+                                    0 -> Icon(Icons.Default.HourglassEmpty, contentDescription = title)
+                                    1 -> Icon(Icons.Default.Check, contentDescription = title)
+                                    2 -> Icon(Icons.Default.Close, contentDescription = title)
+                                }
                             }
                         )
                     }
@@ -114,25 +110,30 @@ fun OrdersListScreen(
             modifier = Modifier.padding(padding)
         ) {
             if (currentOrders.isEmpty()) {
+                // Empty State
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
+                    val emptyText = when (selectedTabIndex) {
+                        0 -> R.string.no_pending_orders
+                        1 -> R.string.no_completed_orders
+                        2 -> R.string.no_cancelled_orders
+                        else -> R.string.no_orders
+                    }
                     Text(
                         text = if (searchQuery.isNotEmpty()) {
                             stringResource(R.string.no_matching_orders)
                         } else {
-                            stringResource(
-                                if (selectedTabIndex == 0) R.string.no_pending_orders
-                                else R.string.no_completed_orders
-                            )
+                            stringResource(emptyText)
                         },
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
             } else {
+                // Orders List
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(8.dp),
@@ -153,6 +154,12 @@ fun OrdersListScreen(
     }
 }
 
+// ---------- Helpers ----------
+private fun matchesSearch(orderWithItems: OrderWithItems, query: String): Boolean {
+    return orderWithItems.order.id.toString().contains(query, ignoreCase = true) ||
+            orderWithItems.retailer.name.contains(query, ignoreCase = true)
+}
+
 @Composable
 fun OrderListItem(
     orderWithItems: OrderWithItems,
@@ -171,24 +178,19 @@ fun OrderListItem(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text(
-                        text = "🧾 Order #${order.id}",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "🏬 ${retailer.name}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text("🧾 Order #${order.id}", style = MaterialTheme.typography.titleMedium)
+                    Text("🏬 ${retailer.name}", style = MaterialTheme.typography.bodyMedium)
                 }
-                StatusChip(isCompleted = order.isCompleted)
+                StatusChip(
+                    isCompleted = order.isCompleted,
+                    isCancelled = order.isCancelled
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -197,14 +199,8 @@ fun OrderListItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = "📅 ${dateFormatter.format(Date(order.date))}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "💰 ₹${"%.2f".format(order.totalAmount)}",
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Text("📅 ${dateFormatter.format(Date(order.date))}", style = MaterialTheme.typography.bodyMedium)
+                Text("💰 ₹${"%.2f".format(order.totalAmount)}", style = MaterialTheme.typography.titleMedium)
             }
 
             Text(
@@ -217,15 +213,22 @@ fun OrderListItem(
 }
 
 @Composable
-fun StatusChip(isCompleted: Boolean) {
+fun StatusChip(
+    isCompleted: Boolean,
+    isCancelled: Boolean
+) {
+    val (color, label) = when {
+        isCancelled -> MaterialTheme.colorScheme.errorContainer to "Cancelled"
+        isCompleted -> MaterialTheme.colorScheme.primaryContainer to "Completed"
+        else -> MaterialTheme.colorScheme.secondaryContainer to "Pending"
+    }
+
     Surface(
-        color = if (isCompleted) MaterialTheme.colorScheme.primaryContainer
-        else MaterialTheme.colorScheme.secondaryContainer,
+        color = color,
         shape = MaterialTheme.shapes.small
     ) {
         Text(
-            text = if (isCompleted) stringResource(R.string.completed)
-            else stringResource(R.string.pending),
+            text = label,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelSmall
         )
