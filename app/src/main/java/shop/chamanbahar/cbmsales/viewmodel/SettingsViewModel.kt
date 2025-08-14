@@ -25,12 +25,13 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
                 _language.value = lang
                 _darkTheme.value = dark
             }
+        }
 
+        viewModelScope.launch {
             prefManager.isLanguageSelected.collect {
                 _languageSelected.value = it
             }
         }
-
     }
 
     fun setLanguage(lang: String) = viewModelScope.launch {
@@ -45,3 +46,4 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         prefManager.saveTheme(dark)
     }
 }
+
