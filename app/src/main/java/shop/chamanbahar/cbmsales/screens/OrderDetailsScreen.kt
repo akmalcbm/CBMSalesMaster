@@ -79,16 +79,16 @@ fun OrderDetailsScreen(
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val timeFormatter = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
 
-    // New: collect the OrderWithItems directly (null == loading/empty)
-    val orderWithItems by remember(orderId) {
-        orderViewModel.getOrderDetails(orderId)
-    }.collectAsStateWithLifecycle(initialValue = null)
+    // Collect order details
+    val orderWithItems by orderViewModel.getOrderDetails(orderId)
+        .collectAsStateWithLifecycle(initialValue = null)
 
     var isEditingNotes by rememberSaveable { mutableStateOf(false) }
     var editedNotes by rememberSaveable { mutableStateOf("") }
     var itemToRemove by remember { mutableStateOf<OrderItem?>(null) }
     var showDeleteOrderDialog by remember { mutableStateOf(false) }
 
+    // Keep notes synced with current order
     LaunchedEffect(orderWithItems?.order?.notes) {
         editedNotes = orderWithItems?.order?.notes.orEmpty()
     }
@@ -107,22 +107,20 @@ fun OrderDetailsScreen(
                     }
                 },
                 actions = {
-                    order?.let {
-                        val disabled = it.isCancelled
+                    if (order != null && !order.isCancelled) {
                         IconButton(
                             onClick = {
                                 scope.launch {
-                                    orderViewModel.setOrderCompleted(orderId, !it.isCompleted)
+                                    orderViewModel.setOrderCompleted(orderId, !order.isCompleted)
                                     snackbarHostState.showSnackbar(
-                                        if (!it.isCompleted) "Order marked as completed"
+                                        if (!order.isCompleted) "Order marked as completed"
                                         else "Order reverted to pending"
                                     )
                                 }
-                            },
-                            enabled = !disabled
+                            }
                         ) {
                             Icon(
-                                imageVector = if (it.isCompleted) Icons.Default.Check else Icons.Default.HourglassEmpty,
+                                imageVector = if (order.isCompleted) Icons.Default.Check else Icons.Default.HourglassEmpty,
                                 contentDescription = "Toggle Completed"
                             )
                         }
@@ -135,29 +133,34 @@ fun OrderDetailsScreen(
 
         when {
             orderWithItems == null -> {
-                // Loading / not found yet
+                // Loading state
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
                     contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
+                ) {
+                    CircularProgressIndicator()
+                }
             }
 
             order != null && retailer != null -> {
                 // Derived totals
-                val mrpSubtotal = remember(items) {
-                    items.sumOf {
-                        val mrpRate =
-                            if (it.discount >= 100) 0.0 else it.rate / (1 - (it.discount / 100))
-                        mrpRate * it.quantity
-                    }
+                val mrpSubtotal by remember(items) {
+                    mutableStateOf(
+                        items.sumOf {
+                            val mrpRate = if (it.discount >= 100) 0.0 else it.rate / (1 - (it.discount / 100))
+                            mrpRate * it.quantity
+                        }
+                    )
                 }
-                val totalDiscountAmount = remember(items) {
-                    items.sumOf {
-                        val mrpRate = it.rate / (1 - (it.discount / 100))
-                        (mrpRate * it.quantity) - it.subtotal
-                    }
+                val totalDiscountAmount by remember(items) {
+                    mutableStateOf(
+                        items.sumOf {
+                            val mrpRate = if (it.discount >= 100) 0.0 else it.rate / (1 - (it.discount / 100))
+                            (mrpRate * it.quantity) - it.subtotal
+                        }
+                    )
                 }
 
                 LazyColumn(
@@ -168,12 +171,7 @@ fun OrderDetailsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     item {
-                        OrderHeaderCard(
-                            order = order,
-                            retailer = retailer,
-                            dateFormatter = dateFormatter,
-                            timeFormatter = timeFormatter
-                        )
+                        OrderHeaderCard(order, retailer, dateFormatter, timeFormatter)
                     }
 
                     item {
@@ -193,10 +191,7 @@ fun OrderDetailsScreen(
                     }
 
                     item {
-                        Text(
-                            "Order Items (${items.size})",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Text("Order Items (${items.size})", style = MaterialTheme.typography.titleMedium)
                     }
 
                     items(
@@ -208,9 +203,7 @@ fun OrderDetailsScreen(
                             onQuantityChange = { newQty ->
                                 if (!order.isCompleted && !order.isCancelled) {
                                     scope.launch {
-                                        orderViewModel.updateOrderItem(
-                                            product.copy(quantity = newQty)
-                                        )
+                                        orderViewModel.updateOrderItem(product.copy(quantity = newQty))
                                     }
                                 }
                             },
@@ -231,7 +224,6 @@ fun OrderDetailsScreen(
                         )
                     }
 
-                    // Cancel button (if not cancelled and not completed)
                     if (!order.isCompleted && !order.isCancelled) {
                         item {
                             DangerButton(
@@ -245,25 +237,21 @@ fun OrderDetailsScreen(
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
-                    }
 
-                    // Add more products (if not completed/cancelled)
-                    if (!order.isCompleted && !order.isCancelled) {
                         item {
                             Button(
                                 onClick = {
-                                    navController.navigate("order_screen?editOrderId=${order.id}")
+                                    navController.navigate("orderScreen?editOrderId=${order.id}")
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Add Products")
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(Modifier.width(8.dp))
                                 Text("Add More Products")
                             }
                         }
                     }
 
-                    // Delete order (always visible)
                     item {
                         DangerButton(
                             text = "Delete Order",
@@ -321,13 +309,13 @@ fun OrderDetailsScreen(
                         .fillMaxSize()
                         .padding(padding),
                     contentAlignment = Alignment.Center
-                ) { Text("Order not found", style = MaterialTheme.typography.bodyLarge) }
+                ) {
+                    Text("Order not found", style = MaterialTheme.typography.bodyLarge)
+                }
             }
         }
     }
 }
-
-
 
 
 @Composable

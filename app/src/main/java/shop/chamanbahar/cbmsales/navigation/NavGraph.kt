@@ -21,7 +21,7 @@ import shop.chamanbahar.cbmsales.viewmodel.*
 
 @SuppressLint("StateFlowValueCalledInComposition")
 @Composable
-fun AppNavGraph(
+fun NavGraph(
     settingsViewModel: SettingsViewModel,
     productViewModel: ProductViewModel = viewModel()
 ) {
@@ -97,14 +97,24 @@ fun AppNavGraph(
                 )
             }
 
-            // 🛒 Place New Order
-            composable("orderScreen") {
+            // 🛒 Place New Order or Edit Existing
+            composable(
+                route = "orderScreen?editOrderId={editOrderId}",
+                arguments = listOf(navArgument("editOrderId") {
+                    type = NavType.IntType
+                    defaultValue = -1
+                })
+            ) { backStackEntry ->
+                val editOrderId = backStackEntry.arguments?.getInt("editOrderId")?.takeIf { it != -1 }
                 OrderScreen(
                     navController = navController,
                     orderViewModel = orderViewModel,
-                    products = productViewModel.products.value
+                    products = productViewModel.products.value,
+                    editOrderId = editOrderId
                 )
             }
+
+
 
             // 📋 Orders List
             composable("ordersList") {

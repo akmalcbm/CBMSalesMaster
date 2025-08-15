@@ -7,7 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
-import shop.chamanbahar.cbmsales.navigation.AppNavGraph
+import shop.chamanbahar.cbmsales.navigation.NavGraph
 import shop.chamanbahar.cbmsales.ui.theme.CBMSalesTheme
 import shop.chamanbahar.cbmsales.viewmodel.SettingsViewModel
 import java.util.*
@@ -35,7 +35,7 @@ class App : ComponentActivity() {
             }
 
             CBMSalesTheme(useDarkTheme = isDark) {
-                AppNavGraph(settingsViewModel = settingsViewModel)
+                NavGraph(settingsViewModel = settingsViewModel)
             }
         }
     }

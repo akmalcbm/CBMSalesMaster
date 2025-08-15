@@ -35,6 +35,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.launch
 import shop.chamanbahar.cbmsales.data.entities.Order
@@ -61,13 +63,15 @@ import shop.chamanbahar.cbmsales.helper.DatePickerField
 import shop.chamanbahar.cbmsales.helper.RetailerSelector
 import shop.chamanbahar.cbmsales.model.Product
 import shop.chamanbahar.cbmsales.viewmodel.OrderViewModel
+import shop.chamanbahar.cbmsales.viewmodel.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderScreen(
     navController: NavHostController,
     orderViewModel: OrderViewModel,
-    products: List<Product> = emptyList()
+    products: List<Product> = emptyList(),
+    editOrderId: Int? = null
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -78,10 +82,33 @@ fun OrderScreen(
     var retailerPhone by remember { mutableStateOf("") }
     var retailerAddress by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
-    var notes by remember { mutableStateOf("") }
+    var notes: String? by remember { mutableStateOf("") }
     var isSaving by remember { mutableStateOf(false) }
 
     val cartItems = remember { mutableStateListOf<CartItem>() }
+
+    // ✅ Load existing order data when editing
+    val productViewModel: ProductViewModel = viewModel()
+
+    LaunchedEffect(editOrderId) {
+        if (editOrderId != null) {
+            orderViewModel.getOrderDetails(editOrderId).collect { orderWithItems ->
+                orderWithItems?.let {
+                    selectedRetailer = retailers.find { r -> r.id == it.order.retailerId }
+                    retailerPhone = selectedRetailer?.phone ?: ""
+                    retailerAddress = selectedRetailer?.address ?: ""
+                    selectedDate = it.order.date
+                    notes = it.order.notes
+                    cartItems.clear()
+                    cartItems.addAll(
+                        it.items.map { item ->
+                            CartItem.fromOrderItem(item, productViewModel.products.value)
+                        }
+                    )
+                }
+            }
+        }
+    }
 
     // ✅ Group products by variantKey (like category)
     val groupedProducts = remember(products) { products.groupBy { it.variantKey } }
@@ -146,13 +173,48 @@ fun OrderScreen(
                     )
                 }
 
-                // Products inside the group
                 items(productList) { product ->
 
-                    var qty by remember { mutableStateOf(0) }
-                    var discount by remember { mutableStateOf("0") }
+                    val existingCartItem = cartItems.find { it.product.id == product.id }
+                    var qty by remember { mutableStateOf(existingCartItem?.quantity ?: 0) }
+                    var discount by remember {
+                        mutableStateOf(
+                            existingCartItem?.discount?.toString() ?: "0"
+                        )
+                    }
+                    var unit by remember {
+                        mutableStateOf(
+                            existingCartItem?.unit ?: product.getAvailableUnits().first()
+                        )
+                    }
                     var unitExpanded by remember { mutableStateOf(false) }
-                    var unit by remember { mutableStateOf(product.getAvailableUnits().first()) }
+
+                    fun updateCart(
+                        newQty: Int = qty,
+                        newDiscountStr: String = discount,
+                        newUnit: String = unit
+                    ) {
+                        qty = newQty
+                        discount = newDiscountStr
+                        unit = newUnit
+
+                        val discountVal =
+                            newDiscountStr.toDoubleOrNull()?.coerceIn(0.0, 100.0) ?: 0.0
+
+                        val existing =
+                            cartItems.find { it.product.id == product.id && it.unit == newUnit }
+                        if (newQty > 0) {
+                            if (existing != null) {
+                                existing.quantity = newQty
+                                existing.discount = discountVal
+                            } else {
+                                cartItems.add(CartItem(product, newQty, newUnit, discountVal))
+                            }
+                        } else {
+                            // If qty is 0, remove from cart
+                            cartItems.removeAll { it.product.id == product.id && it.unit == newUnit }
+                        }
+                    }
 
                     val discountVal = discount.toDoubleOrNull()?.coerceIn(0.0, 100.0) ?: 0.0
                     val rate = product.rate(discountVal)
@@ -166,7 +228,6 @@ fun OrderScreen(
                         elevation = CardDefaults.cardElevation(3.dp)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-
                             Text(
                                 text = "${product.name} (₹${product.mrp})",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -176,46 +237,29 @@ fun OrderScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .offset(x = (-10).dp), // 👈 Moves the row 10dp to the left
+                                    .offset(x = (-10).dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-
-                                // 🖼️ Image Placeholder
                                 Image(
                                     painter = painterResource(id = product.imageResId),
                                     contentDescription = product.name,
-                                    modifier = Modifier
-                                        .size(100.dp)
-                                        .align(Alignment.CenterVertically),
+                                    modifier = Modifier.size(100.dp),
                                     contentScale = ContentScale.Fit
                                 )
 
                                 Column(modifier = Modifier.weight(1f)) {
 
-                                    // Quantity + Dropdown for Unit
+                                    // Quantity + Unit dropdown
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        // Quantity
                                         OutlinedTextField(
                                             value = qty.toString(),
                                             onValueChange = {
-                                                qty = it.toIntOrNull()?.coerceAtLeast(0) ?: 0
-                                                val existing =
-                                                    cartItems.find { it.product.id == product.id && it.unit == unit }
-                                                if (existing != null) {
-                                                    existing.quantity = qty
-                                                } else {
-                                                    cartItems.add(
-                                                        CartItem(
-                                                            product,
-                                                            qty,
-                                                            unit,
-                                                            discountVal
-                                                        )
-                                                    )
-                                                }
+                                                updateCart(
+                                                    newQty = it.toIntOrNull() ?: 0
+                                                )
                                             },
                                             label = { Text("Qty") },
                                             singleLine = true,
@@ -225,7 +269,6 @@ fun OrderScreen(
                                                 .padding(end = 8.dp)
                                         )
 
-                                        // ⬇️ Inside your Row (Unit Dropdown Section)
                                         Box(modifier = Modifier.weight(1f)) {
                                             OutlinedTextField(
                                                 value = unit,
@@ -239,7 +282,7 @@ fun OrderScreen(
                                                 singleLine = true,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .height(56.dp), // Optional: Controls vertical height
+                                                    .height(56.dp),
                                                 trailingIcon = {
                                                     IconButton(onClick = { unitExpanded = true }) {
                                                         Icon(
@@ -265,30 +308,13 @@ fun OrderScreen(
                                                             )
                                                         },
                                                         onClick = {
-                                                            unit = unitOption
+                                                            updateCart(newUnit = unitOption)
                                                             unitExpanded = false
-
-                                                            val existing =
-                                                                cartItems.find { it.product.id == product.id && it.unit == unitOption }
-                                                            if (existing != null) {
-                                                                existing.quantity = qty
-                                                                existing.discount = discountVal
-                                                            } else {
-                                                                cartItems.add(
-                                                                    CartItem(
-                                                                        product,
-                                                                        qty,
-                                                                        unitOption,
-                                                                        discountVal
-                                                                    )
-                                                                )
-                                                            }
                                                         }
                                                     )
                                                 }
                                             }
                                         }
-
                                     }
 
                                     Spacer(modifier = Modifier.height(18.dp))
@@ -301,17 +327,7 @@ fun OrderScreen(
                                     ) {
                                         OutlinedTextField(
                                             value = discount,
-                                            onValueChange = {
-                                                discount = it
-                                                val d = it.toDoubleOrNull() ?: 0.0
-                                                val existing =
-                                                    cartItems.find { it.product.id == product.id && it.unit == unit }
-                                                if (existing != null) {
-                                                    existing.discount = d
-                                                } else {
-                                                    cartItems.add(CartItem(product, qty, unit, d))
-                                                }
-                                            },
+                                            onValueChange = { updateCart(newDiscountStr = it) },
                                             label = { Text("Discount %") },
                                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                             singleLine = true,
@@ -347,7 +363,7 @@ fun OrderScreen(
             // 📝 Notes field
             item {
                 OutlinedTextField(
-                    value = notes,
+                    value = notes ?: "",
                     onValueChange = { notes = it },
                     label = { Text("Notes (optional)") },
                     modifier = Modifier.fillMaxWidth(),
@@ -389,32 +405,66 @@ fun OrderScreen(
                             try {
                                 val total = cartItems.sumOf { it.calculateTotal(it.discount) }
 
-                                val orderId = orderViewModel.addOrder(
-                                    Order(
-                                        retailerId = selectedRetailer!!.id,
-                                        date = selectedDate,
-                                        discount = 0.0,
-                                        totalAmount = total,
-                                        notes = notes,
-                                        isCompleted = false // Make sure new order starts as pending
+                                if (editOrderId == null) {
+                                    // New order
+                                    val orderId = orderViewModel.addOrder(
+                                        Order(
+                                            retailerId = selectedRetailer!!.id,
+                                            date = selectedDate,
+                                            discount = 0.0,
+                                            totalAmount = total,
+                                            notes = notes
+                                        )
                                     )
-                                )
 
-                                cartItems.filter { it.quantity > 0 }.forEach { item ->
-                                    orderViewModel.addOrderItem(item.toOrderItem(orderId.toInt()))
+                                    cartItems.filter { it.quantity > 0 }
+                                        .forEach { item ->
+                                            orderViewModel.addOrderItem(item.toOrderItem(orderId.toInt()))
+                                        }
+
+                                } else {
+                                    // Update existing order
+                                    orderViewModel.updateOrder(
+                                        Order(
+                                            id = editOrderId,
+                                            retailerId = selectedRetailer!!.id,
+                                            date = selectedDate,
+                                            discount = 0.0,
+                                            totalAmount = total,
+                                            notes = notes
+                                        )
+                                    )
+
+                                    // Fetch existing DB items
+                                    val existingItems = orderViewModel.getOrderItems(editOrderId)
+
+                                    // Handle changes
+                                    cartItems.forEach { cartItem ->
+                                        val newOrderItem = cartItem.toOrderItem(editOrderId)
+
+                                        val existing = existingItems.find {
+                                            it.productId == newOrderItem.productId &&
+                                                    it.unit == newOrderItem.unit
+                                        }
+
+                                        when {
+                                            cartItem.quantity <= 0 && existing != null -> {
+                                                // ❌ Quantity zero: remove item
+                                                orderViewModel.deleteOrderItem(existing)
+                                            }
+                                            existing != null -> {
+                                                // ✏ Update existing item
+                                                orderViewModel.updateOrderItem(newOrderItem.copy(id = existing.id))
+                                            }
+                                            cartItem.quantity > 0 -> {
+                                                // ➕ Insert new item
+                                                orderViewModel.addOrderItem(newOrderItem)
+                                            }
+                                        }
+                                    }
                                 }
 
-                                // Reset form
-                                selectedRetailer = null
-                                retailerPhone = ""
-                                retailerAddress = ""
-                                selectedDate = System.currentTimeMillis()
-                                notes = ""
-                                cartItems.clear()
-
                                 snackbarHostState.showSnackbar("✅ Order saved successfully!")
-
-                                // Go to Orders List screen instead of summary
                                 navController.navigate("ordersList") {
                                     popUpTo("home") { inclusive = false }
                                     launchSingleTop = true
@@ -422,16 +472,12 @@ fun OrderScreen(
 
                             } catch (e: Exception) {
                                 snackbarHostState.showSnackbar("❌ Error: ${e.message}")
-                                e.printStackTrace()
                             } finally {
                                 isSaving = false
                             }
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 100.dp),
-                    enabled = !isSaving
+
+                    }
                 ) {
                     if (isSaving) {
                         CircularProgressIndicator(
@@ -443,7 +489,7 @@ fun OrderScreen(
                         )
                         Text("Saving…")
                     } else {
-                        Text("✅ Save Order")
+                        Text(if (editOrderId != null) "Update Order" else "Save Order")
                     }
                 }
 

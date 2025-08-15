@@ -4,25 +4,28 @@ import androidx.room.*
 import shop.chamanbahar.cbmsales.data.entities.OrderItem
 
 @Dao
-interface OrderItemDao {
-    // Insert
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+interface OrderItemDao  {
+
+    // ✅ Pure insert — will fail if conflict (keeps old data)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertOrderItem(orderItem: OrderItem): Long
 
-    // Update
+    // Insert or update (REPLACE on conflict)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrUpdate(orderItem: OrderItem)
+
     @Update
     suspend fun updateOrderItem(orderItem: OrderItem)
 
-    // Delete by object
     @Delete
     suspend fun deleteOrderItem(orderItem: OrderItem)
 
-    // Delete by ID
+    @Query("SELECT * FROM order_items WHERE orderId = :orderId")
+    suspend fun getItemsForOrder(orderId: Int): List<OrderItem>
+
     @Query("DELETE FROM order_items WHERE id = :orderItemId")
     suspend fun deleteOrderItemById(orderItemId: Int)
 
-    // Get all items for an order
     @Query("SELECT * FROM order_items WHERE orderId = :orderId")
     suspend fun getOrderItems(orderId: Int): List<OrderItem>
 }
-

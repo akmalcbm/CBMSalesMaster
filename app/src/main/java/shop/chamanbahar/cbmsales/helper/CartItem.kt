@@ -31,4 +31,36 @@ data class CartItem(
             imageResId = product.imageResId // 👈 Link image
         )
     }
+
+    companion object {
+        fun fromOrderItem(orderItem: OrderItem, allProducts: List<Product>): CartItem {
+            val product = allProducts.find { it.id == orderItem.productId }
+                ?: Product(
+                    id = orderItem.productId,
+                    name = orderItem.productName,
+                    description = "",
+                    imageResId = orderItem.imageResId,
+                    code = orderItem.rate,
+                    mrp = orderItem.rate,
+                    weight = 0.0,
+                    bundle = 0.0,
+                    bori = 0.0,
+                    boriScheme = "NA",
+                    variantKey = "",
+                    category = "",
+                    websiteUrl = ""
+                )
+
+            return CartItem(
+                product = product,
+                quantity = orderItem.quantity,
+                unit = orderItem.unit,
+                discount = orderItem.discount
+            )
+        }
+    }
+
+
+
+
 }
