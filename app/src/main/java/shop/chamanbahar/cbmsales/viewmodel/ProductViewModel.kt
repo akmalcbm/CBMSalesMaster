@@ -64,25 +64,37 @@ class ProductViewModel : ViewModel() {
         Product(17, "(50g Box) Biryani Masala", "NA", R.drawable.briyani_50, 380.0, 52.0, 50.0, 10.0, 10.0, "NA", "Biryani","https://chamanbahar.shop/product/biryani-masala"),
 
         Product(18, "(₹ 10) Chicken Masala Pkt", "NA", R.drawable.chicken_10, 95.0, 10.0, 16.0, 13.0, 40.0, "NA", "Chicken","https://chamanbahar.shop/product/chicken-meat-masala"),
-        Product(19, "(50g Box) Chicken/Mutton Masala", "NA", R.drawable.chicken_mutton_50_box, 320.0, 43.0, 50.0, 10.0, 10.0, "NA", "Chicken/Mutton","https://chamanbahar.shop/product/chicken-mutton-masala"),
+        Product(19, "(50g Box) Chicken/Mutton Masala", "NA", R.drawable.chicken_mutton_50_box, 320.0, 43.0, 50.0, 10.0, 10.0, "NA", "Chicken","https://chamanbahar.shop/product/chicken-mutton-masala"),
 
         Product(20, "(₹ 10) Chaat Masala Box", "NA", R.drawable.chaat_10, 95.0, 10.0, 18.0, 12.0, 10.0, "NA", "Chaat Masala","https://chamanbahar.shop/product/chaman-bahar-chaat-masala"),
         Product(21, "(50g Box) Chaat Masala", "NA", R.drawable.chaat_50, 210.0, 29.0, 50.0, 10.0, 10.0, "NA", "Chaat Masala","https://chamanbahar.shop/product/chaman-bahar-chaat-masala-50-gm"),
 
-        Product(22, "(50g Box) Kashmiri Mirch", "NA", R.drawable.kashimiri_50, 375.0, 52.0, 50.0, 10.0, 10.0, "NA", "Kashmiri Mirch","https://chamanbahar.shop/product/kashmiri-mirch-powder"),
+        Product(22, "(₹ 10 Box) Kashmiri Mirch", "NA", R.drawable.kashmiri_10, 95.0, 10.0, 12.0, 12.0, 20.0, "NA", "Kashmiri Mirch","https://chamanbahar.shop/product/kashmiri-mirch-powder"),
+        Product(23, "(50g Box) Kashmiri Mirch", "NA", R.drawable.kashimiri_50, 375.0, 52.0, 50.0, 10.0, 10.0, "NA", "Kashmiri Mirch","https://chamanbahar.shop/product/kashmiri-mirch-powder"),
 
-        Product(23, "(50g Box) Fish & Chicken Roasted Masala", "NA", R.drawable.fish_chicken_roasted_50_box, 195.0, 35.0, 50.0, 10.0, 20.0, "NA", "Fry Masala","https://chamanbahar.shop/product/fish-chicken-roasted-masala"),
+        Product(24, "(50g Box) Fish & Chicken Roasted Masala", "NA", R.drawable.fish_chicken_roasted_50_box, 195.0, 35.0, 50.0, 10.0, 20.0, "NA", "Fry Masala","https://chamanbahar.shop/product/fish-chicken-roasted-masala"),
 
-        Product(24, "(100g Box) Roasted Jeera Powder", "NA", R.drawable.jeera_100_b, 310.0, 80.0, 100.0, 5.0, 10.0,"NA", "Jeera","https://chamanbahar.shop/product/chaman-bahar-roasted-jeera-powder-100-gm"),
-        Product(25, "(100g Box) Kali Mirch Powder", "NA", R.drawable.kali_mirch_100_b, 655.0, 165.0, 100.0, 5.0, 10.0,"NA", "Kali Mirch","https://chamanbahar.shop/product/chaman-bahar-kali-mirch-powder-100-gm"),
-        Product(26, "(25g Box) Chicken Tikka Masala", "NA", R.drawable.chickentikka_25_b, 275.0, 37.0, 25.0, 10.0, 10.0,"NA", "Tikka","https://chamanbahar.shop/product/chaman-bahar-chicken-tikka-masala"),
-        Product(27, "(25g Box) Special Meat Masala", "NA", R.drawable.spl_meat_25_b, 202.0, 27.0, 25.0, 10.0, 10.0,"NA", "Special","https://chamanbahar.shop/product/chaman-bahar-special-meat-masala"),
-        Product(28, "(25g Box) Al-faham Masala", "NA", R.drawable.alfaham_25_b, 260.0, 35.0, 25.0, 10.0, 10.0,"NA", "Alfaham","https://chamanbahar.shop/product/chaman-bahar-alfaham-masala"),
-        Product(29, "(50g Box) Jaljeera Powder", "NA", R.drawable.jaljeera_50_b, 180.0, 25.0, 50.0, 10.0, 10.0,"NA", "Jaljeera Powder","https://chamanbahar.shop/product/chaman-bahar-jaljeera-powder-50-gm"),
+        Product(25, "(100g Box) Roasted Jeera Powder", "NA", R.drawable.jeera_100_b, 310.0, 80.0, 100.0, 5.0, 10.0,"NA", "Other","https://chamanbahar.shop/product/chaman-bahar-roasted-jeera-powder-100-gm"),
 
-        Product(30, "(1Kg Loose) Fish Masala", "NA", R.drawable.placeholder_image, 330.0, 450.0, 1000.0, 1.0, 10.0,"NA", "Fish Loose",""),
+        Product(26, "(100g Box) Kali Mirch Powder", "NA", R.drawable.kali_mirch_100_b, 655.0, 165.0, 100.0, 5.0, 10.0,"NA", "Other","https://chamanbahar.shop/product/chaman-bahar-kali-mirch-powder-100-gm"),
+        Product(27, "(50g Box) Kali Mirch Powder", "NA", R.drawable.kali_mirch_100_b, 330.0, 85.0, 50.0, 5.0, 10.0,"NA", "Other","https://chamanbahar.shop/product/chaman-bahar-kali-mirch-powder-100-gm"),
 
-        Product(31, "(1Kg Loose) CBM-Mishran Garam Masala", "NA", R.drawable.placeholder_image, 225.0, 350.0, 1000.0, 10.0, 2.0,"NA", "Mishran Loose","")
+        Product(20, "(₹ 10) Chole Masala Box", "NA", R.drawable.chole_10, 95.0, 10.0, 12.0, 12.0, 10.0, "NA", "Chole Masala","https://chamanbahar.shop/product/chaman-bahar-chaat-masala"),
+        Product(20, "(₹ 10) Paneer Masala Box", "NA", R.drawable.paneer_10, 95.0, 10.0, 12.0, 12.0, 10.0, "NA", "Paneer Masala","https://chamanbahar.shop/product/chaman-bahar-chaat-masala"),
+        Product(20, "(₹ 10) Kasoori Methi Box", "NA", R.drawable.kasoori_10, 95.0, 10.0, 8.0, 12.0, 10.0, "NA", "Kasoori Methi","https://chamanbahar.shop/product/chaman-bahar-chaat-masala"),
+        Product(20, "(100g Box) Seekh Kabab Masala Box", "NA", R.drawable.seekh_100gm, 245.0, 60.0, 100.0, 5.0, 10.0, "NA", "Seekh Masala","https://chamanbahar.shop/product/chaman-bahar-chaat-masala"),
+
+
+        Product(32, "(25g Box) Chicken Tikka Masala", "NA", R.drawable.chickentikka_25_b, 275.0, 37.0, 25.0, 10.0, 10.0,"NA", "Other","https://chamanbahar.shop/product/chaman-bahar-chicken-tikka-masala"),
+        Product(33, "(25g Box) Special Meat Masala", "NA", R.drawable.spl_meat_25_b, 202.0, 27.0, 25.0, 10.0, 10.0,"NA", "Other","https://chamanbahar.shop/product/chaman-bahar-special-meat-masala"),
+        Product(34, "(25g Box) Al-faham Masala", "NA", R.drawable.alfaham_25_b, 260.0, 35.0, 25.0, 10.0, 10.0,"NA", "Other","https://chamanbahar.shop/product/chaman-bahar-alfaham-masala"),
+        Product(35, "(50g Box) Jaljeera Powder", "NA", R.drawable.jaljeera_50_b, 180.0, 25.0, 50.0, 10.0, 10.0,"NA", "Other","https://chamanbahar.shop/product/chaman-bahar-jaljeera-powder-50-gm"),
+
+
+
+        Product(36, "(1Kg Loose) Fish Masala", "NA", R.drawable.placeholder_image, 330.0, 450.0, 1000.0, 1.0, 10.0,"NA", "Loose",""),
+
+        Product(37, "(1Kg Loose) CBM-Mishran Garam Masala", "NA", R.drawable.placeholder_image, 225.0, 350.0, 1000.0, 10.0, 2.0,"NA", "Loose","")
 
     )
 }
