@@ -45,15 +45,16 @@ class ProductViewModel : ViewModel() {
         Product(4, "(200g) Meat Masala", "Chaman Bahar Meat Masala (200 Gram)", R.drawable.masala_200g, 310.0, 88.0, 200.0, 5.0, 20.0, "NA", "Meat Masala","https://chamanbahar.shop/product/chaman-bahar-meat-masala-200gm"),
         Product(5, "(500g) Meat Masala", "Chaman Bahar Meat Masala (500 Gram)", R.drawable.masala_500g, 300.0, 198.0, 500.0, 2.0, 20.0, "NA", "Meat Masala","https://chamanbahar.shop/product/chaman-bahar-meat-masala-500gm"),
 
-        Product(6, "(₹ 5) Haldi Powder", "Chaman Bahar (₹ 5) Haldi Powder", R.drawable.haldi_rs_5, 77.0, 5.0, 8.0, 26.0, 30.0, "30+3", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder-%E2%82%B9-5"),
-        Product(7, "(₹ 10) Haldi Powder", "Chaman Bahar Meat (₹ 10) Haldi Powder", R.drawable.haldi_rs_10, 120.0, 10.0, 20.0, 20.0, 20.0, "20+2", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder-rs-10"),
-        Product(8, "(200g) Haldi Powder", "Chaman Bahar (200g) Haldi Powder", R.drawable.haldi_200g, 245.0, 64.0, 200.0, 5.0, 20.0, "NA", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder-200-gm"),
-        Product(9, "(50g Box) Haldi Powder", "(50g Box) Haldi Powder", R.drawable.haldi_box_50g, 250.0, 17.0, 50.0, 20.0, 20.0, "NA", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder-50-gm"),
-        Product(10, "(100g Box) Haldi Powder", "(100g Box) Haldi Powder", R.drawable.haldi_box_100g, 250.0, 34.0, 100.0, 10.0, 20.0, "NA", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder-100-gm"),
-        Product(11, "(200g Box) Haldi Powder", "(200g Box) Haldi Powder", R.drawable.haldi_box_200g, 245.0, 64.0, 200.0, 5.0, 10.0, "NA", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder"),
+        Product(6, "(₹ 5) Haldi Powder", "Chaman Bahar (₹ 5) Haldi Powder", R.drawable.haldi_rs_5, 77.0, 5.0, 8.0, 26.0, 30.0, "NA", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder-%E2%82%B9-5"),
+        Product(7, "(₹ 10) Haldi Powder", "Chaman Bahar Meat (₹ 10) Haldi Powder", R.drawable.haldi_rs_10, 120.0, 10.0, 20.0, 20.0, 20.0, "NA", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder-rs-10"),
+        Product(8, "(200g) Haldi Powder", "Chaman Bahar (200g) Haldi Powder", R.drawable.haldi_200g, 225.0, 72.0, 200.0, 5.0, 20.0, "NA", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder-200-gm"),
+
+        Product(9, "(50g Box) Haldi Powder", "(50g Box) Haldi Powder", R.drawable.haldi_box_50g, 120.0, 21.0, 50.0, 10.0, 20.0, "NA", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder-50-gm"),
+        Product(10, "(100g Box) Haldi Powder", "(100g Box) Haldi Powder", R.drawable.haldi_box_100g, 240.0, 41.0, 100.0, 10.0, 20.0, "NA", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder-100-gm"),
+        Product(11, "(200g Box) Haldi Powder", "(200g Box) Haldi Powder", R.drawable.haldi_box_200g, 225.0, 72.0, 200.0, 5.0, 20.0, "NA", "Haldi Powder","https://chamanbahar.shop/product/chaman-bahar-haldi-powder"),
 
         Product(12, "(₹ 5) Mishran Garam Masala", "NA", R.drawable.mishran_5, 95.0, 5.0, 8.0, 25.0, 20.0, "NA", "Mishran Garam Masala","https://chamanbahar.shop/product/mishran-garam-masala-%E2%82%B95"),
-        Product(13, "(200g Box) Mishran Garam Masala", "NA", R.drawable.mishran_200g, 400.0, 110.0, 200.0, 5.0, 20.0, "NA", "Mishran Garam Masala","https://chamanbahar.shop/product/mishran-garam-masala"),
+        Product(13, "(200g Box) Mishran Garam Masala", "NA", R.drawable.mishran_200g, 400.0, 115.0, 200.0, 5.0, 20.0, "NA", "Mishran Garam Masala","https://chamanbahar.shop/product/mishran-garam-masala"),
 
         Product(14, "(200g Box) Kitchen King", "NA", R.drawable.kk200, 435.0, 125.0, 200.0, 5.0, 10.0, "NA", "Kitchen King","https://chamanbahar.shop/product/kitchen-king"),
 
@@ -62,7 +63,7 @@ class ProductViewModel : ViewModel() {
         Product(16, "(₹ 10) Biryani/Pulav Masala Box", "NA", R.drawable.briyani_10, 95.0, 10.0, 8.0, 12.0, 10.0, "NA", "Biryani","https://chamanbahar.shop/product/cbm-biryani-pulav-masala"),
         Product(17, "(50g Box) Biryani Masala", "NA", R.drawable.briyani_50, 380.0, 52.0, 50.0, 10.0, 10.0, "NA", "Biryani","https://chamanbahar.shop/product/biryani-masala"),
 
-        Product(18, "(₹ 10) Chicken Masala Pkt", "NA", R.drawable.chicken_10, 95.0, 10.0, 16.0, 12.0, 40.0, "NA", "Chicken","https://chamanbahar.shop/product/chicken-meat-masala"),
+        Product(18, "(₹ 10) Chicken Masala Pkt", "NA", R.drawable.chicken_10, 95.0, 10.0, 16.0, 13.0, 40.0, "NA", "Chicken","https://chamanbahar.shop/product/chicken-meat-masala"),
         Product(19, "(50g Box) Chicken/Mutton Masala", "NA", R.drawable.chicken_mutton_50_box, 320.0, 43.0, 50.0, 10.0, 10.0, "NA", "Chicken/Mutton","https://chamanbahar.shop/product/chicken-mutton-masala"),
 
         Product(20, "(₹ 10) Chaat Masala Box", "NA", R.drawable.chaat_10, 95.0, 10.0, 18.0, 12.0, 10.0, "NA", "Chaat Masala","https://chamanbahar.shop/product/chaman-bahar-chaat-masala"),
